@@ -6,6 +6,8 @@ Servicio REST para enviar mensajes de Telegram a números de teléfono
 
 import os
 import asyncio
+import threading
+from concurrent.futures import Future
 from flask import Flask, request, jsonify
 from telethon import TelegramClient
 from telethon.errors import PhoneNumberInvalidError, UserPrivacyRestrictedError
@@ -31,8 +33,30 @@ logger = logging.getLogger(__name__)
 # Inicializar Flask
 app = Flask(__name__)
 
-# Cliente de Telegram (se inicializará en el primer uso)
+# Cliente de Telegram y event loop persistente
 telegram_client = None
+event_loop = None
+loop_thread = None
+
+
+def start_async_loop():
+    """Inicia el event loop en un thread separado"""
+    global event_loop
+    event_loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(event_loop)
+    event_loop.run_forever()
+
+
+def run_async(coro):
+    """
+    Ejecuta una coroutine en el event loop del thread separado
+    y espera el resultado de forma síncrona
+    """
+    if event_loop is None:
+        raise Exception("Event loop no inicializado")
+
+    future = asyncio.run_coroutine_threadsafe(coro, event_loop)
+    return future.result(timeout=120)
 
 
 async def get_telegram_client():
@@ -47,6 +71,8 @@ async def get_telegram_client():
         if not await telegram_client.is_user_authorized():
             logger.error("Cliente no autorizado. Ejecute first_login.py primero.")
             raise Exception("Cliente no autorizado")
+
+        logger.info("Cliente de Telegram inicializado correctamente")
 
     return telegram_client
 
@@ -155,11 +181,8 @@ def send_message():
                 'message': 'Se requiere el campo message'
             }), 400
 
-        # Enviar mensaje de forma asíncrona
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        result = loop.run_until_complete(send_telegram_message(phone_number, message))
-        loop.close()
+        # Enviar mensaje usando el event loop persistente
+        result = run_async(send_telegram_message(phone_number, message))
 
         # Retornar resultado
         status_code = 200 if result['success'] else 400
@@ -206,19 +229,15 @@ def send_batch():
                 'message': 'messages debe ser un array'
             }), 400
 
-        # Enviar mensajes
+        # Enviar mensajes usando el event loop persistente
         results = []
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
 
         for msg in messages:
             phone_number = msg.get('phone_number')
             message = msg.get('message')
 
             if phone_number and message:
-                result = loop.run_until_complete(
-                    send_telegram_message(phone_number, message)
-                )
+                result = run_async(send_telegram_message(phone_number, message))
                 results.append(result)
             else:
                 results.append({
@@ -226,8 +245,6 @@ def send_batch():
                     'error': 'invalid_message',
                     'message': 'Faltan campos en el mensaje'
                 })
-
-        loop.close()
 
         # Contar éxitos y fallos
         success_count = sum(1 for r in results if r['success'])
@@ -250,14 +267,36 @@ def send_batch():
         }), 500
 
 
-if __name__ == '__main__':
+# Inicializar el event loop en un thread separado al arrancar
+def init_app():
+    """Inicializa el event loop persistente"""
+    global loop_thread
+
     # Verificar variables de entorno
     if not API_ID or not API_HASH or not PHONE_NUMBER:
         logger.error("Faltan variables de entorno requeridas")
         logger.error("Asegúrate de configurar: TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_PHONE_NUMBER")
-        exit(1)
+        raise Exception("Faltan variables de entorno")
 
-    # Iniciar servidor
+    # Iniciar el event loop en un thread separado
+    loop_thread = threading.Thread(target=start_async_loop, daemon=True)
+    loop_thread.start()
+    logger.info("Event loop iniciado en thread separado")
+
+    # Dar tiempo al thread para inicializar
+    import time
+    time.sleep(0.5)
+
+
+# Inicializar al importar el módulo (necesario para Gunicorn)
+try:
+    init_app()
+except Exception as e:
+    logger.error(f"Error al inicializar: {e}")
+
+
+if __name__ == '__main__':
+    # Iniciar servidor Flask en modo desarrollo
     port = int(os.getenv('PORT', 5000))
     logger.info(f"Iniciando servidor en puerto {port}")
     app.run(host='0.0.0.0', port=port, debug=False)

@@ -41,12 +41,11 @@ docker-compose down
 # Construir imagen
 docker build -t telegram-api-service .
 
-# Ejecutar contenedor
+# Ejecutar contenedor (el .session ya está en la imagen)
 docker run -d \
   --name telegram-api \
   -p 5000:5000 \
   --env-file .env \
-  -v $(pwd)/telegram_session.session:/app/telegram_session.session:ro \
   telegram-api-service
 
 # Ver logs
@@ -71,6 +70,18 @@ curl -X POST http://localhost:5000/send-message \
     "message": "Mensaje de prueba desde Docker"
   }'
 ```
+
+## Nota Importante sobre Concurrencia
+
+⚠️ **El servicio debe ejecutarse con UN SOLO worker de Gunicorn** porque:
+- Telethon usa SQLite para el archivo de sesión (`.session`)
+- SQLite no soporta acceso concurrente de múltiples procesos
+- Múltiples workers causarán el error "database is locked"
+
+El Dockerfile ya está configurado con `-w 1`. Si necesitas más rendimiento, considera:
+1. Escalar horizontalmente (múltiples instancias con diferentes archivos de sesión)
+2. Usar un balanceador de carga
+3. Implementar un sistema de colas (Redis/RabbitMQ)
 
 ## Despliegue en Producción
 

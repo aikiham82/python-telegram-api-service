@@ -36,4 +36,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:5000/health || exit 1
 
 # Comando para ejecutar la aplicación
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "--timeout", "120", "app:app"]
+# NOTA: Usar solo 1 worker porque Telethon usa SQLite para sesiones
+# SQLite no soporta acceso concurrente de múltiples procesos
+CMD ["gunicorn", "-w", "1", "-b", "0.0.0.0:5000", "--timeout", "120", "--worker-class", "sync", "app:app"]

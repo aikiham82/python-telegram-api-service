@@ -81,7 +81,8 @@ Este script:
 python app.py
 
 # Modo producción (con gunicorn)
-gunicorn -w 4 -b 0.0.0.0:5000 app:app
+# IMPORTANTE: Usar solo 1 worker porque SQLite no soporta concurrencia
+gunicorn -w 1 -b 0.0.0.0:5000 app:app
 ```
 
 El servidor estará disponible en `http://localhost:5000`
@@ -233,7 +234,7 @@ Type=simple
 User=tu_usuario
 WorkingDirectory=/ruta/a/python-telegram-api-service
 Environment="PATH=/ruta/a/python-telegram-api-service/venv/bin"
-ExecStart=/ruta/a/python-telegram-api-service/venv/bin/gunicorn -w 4 -b 0.0.0.0:5000 app:app
+ExecStart=/ruta/a/python-telegram-api-service/venv/bin/gunicorn -w 1 -b 0.0.0.0:5000 app:app
 Restart=always
 
 [Install]

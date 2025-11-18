@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   telegram-api:
     build: .
@@ -13,11 +11,10 @@ services:
       - TELEGRAM_PHONE_NUMBER=${TELEGRAM_PHONE_NUMBER}
       - SESSION_NAME=${SESSION_NAME:-telegram_session}
       - PORT=5000
-    volumes:
-      # Montar el archivo de sesión desde el host
-      - ./telegram_session.session:/app/telegram_session.session:ro
-      # O usar un volumen para persistir sesiones
-      # - telegram-sessions:/app/
+    # El archivo .session está copiado en la imagen durante el build
+    # Si prefieres montarlo como volumen, descomenta las siguientes líneas:
+    # volumes:
+    #   - ./telegram_session.session:/app/telegram_session.session:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 30s

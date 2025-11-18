@@ -143,11 +143,15 @@ Health check endpoint.
 ## Docker Deployment
 
 The project includes Docker support with:
-- `Dockerfile`: Multi-stage build with Python 3.11-slim base
+- `Dockerfile`: Python 3.11-slim base with single worker (required for SQLite session)
 - `docker-compose.yml`: Development and production setup
 - `.dockerignore`: Optimized build context
 
-**Critical**: The `.session` file must be generated on the host BEFORE building the Docker image (run `first_login.py` locally). The Docker container mounts this file as read-only.
+**Critical Notes**:
+1. The `.session` file must be generated on the host BEFORE building the Docker image (run `first_login.py` locally)
+2. The session file is copied into the image during build
+3. **Only 1 Gunicorn worker** is used because Telethon's SQLite session file doesn't support concurrent access
+4. For high traffic, scale horizontally with multiple containers (each with its own session file)
 
 See `DEPLOYMENT.md` for detailed deployment instructions for various hosting platforms (Render, Railway, Fly.io, DigitalOcean, VPS).
 
