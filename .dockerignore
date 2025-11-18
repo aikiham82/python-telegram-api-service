@@ -28,8 +28,8 @@ ENV/
 .env
 
 # Session files (copiar manualmente en producción)
-*.session
-*.session-journal
+#*.session
+#*.session-journal
 
 # Logs
 *.log
