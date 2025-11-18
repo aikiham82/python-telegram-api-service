@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  telegram-api:
+    build: .
+    container_name: telegram-api-service
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - TELEGRAM_API_ID=${TELEGRAM_API_ID}
+      - TELEGRAM_API_HASH=${TELEGRAM_API_HASH}
+      - TELEGRAM_PHONE_NUMBER=${TELEGRAM_PHONE_NUMBER}
+      - SESSION_NAME=${SESSION_NAME:-telegram_session}
+      - PORT=5000
+    volumes:
+      # Montar el archivo de sesión desde el host
+      - ./telegram_session.session:/app/telegram_session.session:ro
+      # O usar un volumen para persistir sesiones
+      # - telegram-sessions:/app/
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# Volumen opcional para persistir sesiones
+# volumes:
+#   telegram-sessions:

@@ -28,7 +28,7 @@ Microservicio REST para enviar mensajes de Telegram a números de teléfono usan
 ### 2. Instalar Dependencias
 
 ```bash
-cd telegram-api-service
+cd python-telegram-api-service
 
 # Crear entorno virtual (recomendado)
 python3 -m venv venv
@@ -100,7 +100,7 @@ GET /health
 ```json
 {
   "status": "ok",
-  "service": "telegram-api-service",
+  "service": "python-telegram-api-service",
   "version": "1.0.0"
 }
 ```
@@ -231,9 +231,9 @@ After=network.target
 [Service]
 Type=simple
 User=tu_usuario
-WorkingDirectory=/ruta/a/telegram-api-service
-Environment="PATH=/ruta/a/telegram-api-service/venv/bin"
-ExecStart=/ruta/a/telegram-api-service/venv/bin/gunicorn -w 4 -b 0.0.0.0:5000 app:app
+WorkingDirectory=/ruta/a/python-telegram-api-service
+Environment="PATH=/ruta/a/python-telegram-api-service/venv/bin"
+ExecStart=/ruta/a/python-telegram-api-service/venv/bin/gunicorn -w 4 -b 0.0.0.0:5000 app:app
 Restart=always
 
 [Install]
@@ -248,29 +248,25 @@ sudo systemctl start telegram-api
 sudo systemctl status telegram-api
 ```
 
-### Opción 2: Docker
+### Opción 2: Docker (Recomendado)
 
-Crea un `Dockerfile`:
+Este proyecto incluye configuración completa de Docker. Ver **[DEPLOYMENT.md](DEPLOYMENT.md)** para instrucciones detalladas.
 
-```dockerfile
-FROM python:3.11-slim
-
-WORKDIR /app
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY . .
-
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "app:app"]
-```
-
-Construir y ejecutar:
+Inicio rápido:
 
 ```bash
-docker build -t telegram-api-service .
-docker run -d -p 5000:5000 --env-file .env -v $(pwd):/app telegram-api-service
+# 1. Autenticarse primero (genera telegram_session.session)
+python first_login.py
+
+# 2. Configurar variables de entorno
+cp .env.example .env
+nano .env
+
+# 3. Ejecutar con Docker Compose
+docker-compose up -d
 ```
+
+**Importante**: El archivo `.session` debe generarse ANTES de usar Docker.
 
 ### Opción 3: Render.com
 
