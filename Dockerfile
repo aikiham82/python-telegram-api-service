@@ -19,7 +19,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copiar el código de la aplicación
 COPY app.py .
 COPY first_login.py .
-COPY telegram_session.session .
 
 # Crear directorio para la sesión
 RUN mkdir -p /app/sessions
